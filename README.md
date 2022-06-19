@@ -1,3 +1,7 @@
+Modified version of https://github.com/timqian/gql-generator
+1. Generates `.ts` files instead of `.gql` files
+2. Exports operations as modules instead of text
+
 # gql-generator
 
 Generate queries from graphql schema, used for writing api test.
