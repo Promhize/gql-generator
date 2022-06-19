@@ -224,8 +224,8 @@ const generateFile = (obj, description) => {
           break;
       }
       query = `${queryName || description.toLowerCase()} ${type}${varsToTypesStr ? `(${varsToTypesStr})` : ''}{\n${query}\n}`;
-      fs.writeFileSync(path.join(writeFolder, `./${type}.${fileExtension}`), query);
-      indexJs += `module.exports.${type} = fs.readFileSync(path.join(__dirname, '${type}.${fileExtension}'), 'utf8');\n`;
+      fs.writeFileSync(path.join(writeFolder, `./${type}.ts`), `export default \`${query}\``);
+      indexJs += `module.exports.${type} = require('./${type}.ts')\n`;
     }
   });
   fs.writeFileSync(path.join(writeFolder, 'index.js'), indexJs);
