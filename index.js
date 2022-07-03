@@ -43,6 +43,32 @@ path.resolve(destDirPath).split(path.sep).reduce((before, cur) => {
   return path.join(before, cur + path.sep);
 }, '');
 let indexJsExportAll = '';
+let clientJs = `
+import to from 'await-to-js'
+import { queries, mutations } from './index'
+import {
+  AxiosToResponse,
+} from '../../types'
+
+const axios = require('axios')
+const { AxiosError, AxiosResponse } = axios
+const methods = {...queries, ...mutations}
+type MethodsRecord = typeof methods
+type Methods = MethodsRecord[keyof MethodsRecord]
+type ReturnValues = NonNullable<Awaited<ReturnType<Parameters<Methods>[0]['handlers']['2']>>['data']>
+class Client {
+  config: ReturnValues[] = []
+  async fetch() {
+    const [err, res]: AxiosToResponse = await to(
+      axios({
+        url: 'http://localhost:4200/request',
+        data: this.config,
+        method: 'POST',
+        withCredentials: true
+      })
+    )
+    return res
+  }`
 
 /**
  * Compile arguments dictionary for a field
@@ -231,23 +257,36 @@ const generateFile = (obj, description) => {
       fs.writeFileSync(path.join(writeFolder, `./${type}.ts`), `
 import { ${hasArguments ? `${tsDataType}, `: ''}${tsOperation} } from '../../graphql'
 import { Handlers } from '../../../types'
-export const ${type}Gql = \`
+const ${type}Gql = \`
   ${query}
 \`
-export type ${typeType}Result = ${tsOperation}['${type}']
+type ${typeType}Result = ${tsOperation}['${type}']
 export const ${type} = ({ handlers ${hasArguments ? `, data}: { data: ${tsDataType};` : `}: {`} handlers: Handlers<${typeType}Result>}) => {
   return {
     query: ${type}Gql,
     name: ${type},
     handlers,
     ${hasArguments ? `data,` : ''}
-  }
+  } as const
 }`);
       indexJs += `export * from './${type}'\n`;
     }
   });
   fs.writeFileSync(path.join(writeFolder, 'index.ts'), indexJs);
   indexJsExportAll += `export * as ${outputFolderName} from './${outputFolderName}'\n`;
+
+  clientJs = `
+  ${clientJs}
+  ${Object.keys(obj).map((type) => {
+    return `
+  public ${type}(args: Parameters<MethodsRecord['${type}']>[0]): this {
+    return Object.assign(this, {
+      config: [...this.config, methods.${type}(args)]
+    })
+  }
+`}).join('')}
+`
+  
 };
 
 if (gqlSchema.getMutationType()) {
@@ -269,3 +308,8 @@ if (gqlSchema.getSubscriptionType()) {
 }
 
 fs.writeFileSync(path.join(destDirPath, 'index.ts'), indexJsExportAll);
+fs.writeFileSync(path.join(destDirPath, 'client.ts'), `${clientJs}
+}
+
+export default Client
+`);
