@@ -59,9 +59,9 @@ type ReturnValues = NonNullable<Awaited<ReturnType<Parameters<Methods>[0]['handl
 class Client {
   config: ReturnValues[] = []
   async fetch() {
-    const [err, res]: AxiosToResponse = await to(
+    const [err, res]: AxiosToResponse<ReturnValues> = await to(
       axios({
-        url: 'http://localhost:4200/request',
+        url: \`${process.env.ENDPOINT}\`,
         data: this.config,
         method: 'POST',
         withCredentials: true
@@ -280,8 +280,9 @@ export const ${type} = ({ handlers ${hasArguments ? `, data}: { data: ${tsDataTy
   ${Object.keys(obj).map((type) => {
     return `
   public ${type}(args: Parameters<MethodsRecord['${type}']>[0]): this {
+    const config = methods.${type}(args)
     return Object.assign(this, {
-      config: [...this.config, methods.${type}(args)]
+      config: [...this.config, config]
     })
   }
 `}).join('')}
