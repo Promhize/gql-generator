@@ -224,12 +224,30 @@ const generateFile = (obj, description) => {
           break;
       }
       query = `${queryName || description.toLowerCase()} ${type}${varsToTypesStr ? `(${varsToTypesStr})` : ''}{\n${query}\n}`;
-      fs.writeFileSync(path.join(writeFolder, `./${type}.ts`), `export default \`${query}\``);
-      indexJs += `module.exports.${type} = require('./${type}.ts')\n`;
+      const tsOperation = `${queryName.substring(0,1).toUpperCase()}${queryName.substring(1)}`
+      const typeType = `${type.substring(0,1).toUpperCase()}${type.substring(1)}`
+      const tsDataType = `${tsOperation}${typeType}Args`
+      const hasArguments = obj[type].args.length > 0
+      fs.writeFileSync(path.join(writeFolder, `./${type}.ts`), `
+import { ${hasArguments ? `${tsDataType}, `: ''}${tsOperation} } from '../../graphql'
+import { Handlers } from '../../../types'
+export const ${type}Gql = \`
+  ${query}
+\`
+export type ${typeType}Result = ${tsOperation}['${type}']
+export const ${type} = ({ handlers ${hasArguments ? `, data}: { data: ${tsDataType};` : `}: {`} handlers: Handlers<${typeType}Result>}) => {
+  return {
+    query: ${type}Gql,
+    name: ${type},
+    handlers,
+    ${hasArguments ? `data,` : ''}
+  }
+}`);
+      indexJs += `export * from './${type}'\n`;
     }
   });
-  fs.writeFileSync(path.join(writeFolder, 'index.js'), indexJs);
-  indexJsExportAll += `module.exports.${outputFolderName} = require('./${outputFolderName}');\n`;
+  fs.writeFileSync(path.join(writeFolder, 'index.ts'), indexJs);
+  indexJsExportAll += `export * as ${outputFolderName} from './${outputFolderName}'\n`;
 };
 
 if (gqlSchema.getMutationType()) {
@@ -250,4 +268,4 @@ if (gqlSchema.getSubscriptionType()) {
   console.log('[gqlg warning]:', 'No subscription type found in your schema');
 }
 
-fs.writeFileSync(path.join(destDirPath, 'index.js'), indexJsExportAll);
+fs.writeFileSync(path.join(destDirPath, 'index.ts'), indexJsExportAll);
