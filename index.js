@@ -55,7 +55,7 @@ const { AxiosError, AxiosResponse } = axios
 const methods = {...queries, ...mutations}
 type MethodsRecord = typeof methods
 type Methods = MethodsRecord[keyof MethodsRecord]
-type ReturnValues = NonNullable<Awaited<ReturnType<Parameters<Methods>[0]['handlers']['2']>>['data']>
+type ReturnValues = Awaited<ReturnType<Parameters<Methods>[0]['handlers']['2']>>['data']
 class Client {
   config: ReturnValues[] = []
   async fetch() {
@@ -257,10 +257,10 @@ const generateFile = (obj, description) => {
       fs.writeFileSync(path.join(writeFolder, `./${type}.ts`), `
 import { ${hasArguments ? `${tsDataType}, `: ''}${tsOperation} } from '../../graphql'
 import { Handlers } from '../../../types'
-const ${type}Gql = \`
+export const ${type}Gql = \`
   ${query}
 \`
-type ${typeType}Result = ${tsOperation}['${type}']
+export type ${typeType}Result = ${tsOperation}['${type}']
 export const ${type} = ({ handlers ${hasArguments ? `, data}: { data: ${tsDataType};` : `}: {`} handlers: Handlers<${typeType}Result>}) => {
   return {
     query: ${type}Gql,
@@ -269,7 +269,7 @@ export const ${type} = ({ handlers ${hasArguments ? `, data}: { data: ${tsDataTy
     ${hasArguments ? `data,` : ''}
   } as const
 }`);
-      indexJs += `export * from './${type}'\n`;
+      indexJs += `export {${type}} from './${type}'\n`;
     }
   });
   fs.writeFileSync(path.join(writeFolder, 'index.ts'), indexJs);
