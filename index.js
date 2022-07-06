@@ -264,8 +264,8 @@ const generateFile = (obj, description) => {
       const gqlName = `${type}Gql`
       fs.mkdirSync(path.join(writeFolder, `./${type}`), {recursive: true});
       fs.writeFileSync(path.join(writeFolder, `./${type}/index.ts`), `
-import { ${hasArguments ? `${tsDataType}, `: ''}${tsOperation} } from '../../graphql'
-import { Handlers } from '../../../types'
+import { ${hasArguments ? `${tsDataType}, `: ''}${tsOperation} } from '../../../graphql'
+import { Handlers } from '../../../../types'
 export const ${gqlName} = \`
   ${query}
 \`
