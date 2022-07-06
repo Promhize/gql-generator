@@ -55,9 +55,13 @@ const { AxiosError, AxiosResponse } = axios
 const methods = {...queries, ...mutations}
 type MethodsRecord = typeof methods
 type Methods = MethodsRecord[keyof MethodsRecord]
-type ReturnValues = Awaited<ReturnType<Parameters<Methods>[0]['handlers']['2']>>['data']
-class Client {
+export type ReturnValues = Awaited<ReturnType<Parameters<Methods>[0]['handlers']['2']>>['data']
+class GatewayClient {
   config: ReturnValues[] = []
+  private endpoints: {commerce: string}
+  constructor({endpoints}: {endpoints: {commerce: string}}) {
+    this.endpoints = endpoints
+  }
   async fetch() {
     const [err, res]: AxiosToResponse<ReturnValues> = await to(
       axios({
@@ -312,5 +316,5 @@ fs.writeFileSync(path.join(destDirPath, 'index.ts'), indexJsExportAll);
 fs.writeFileSync(path.join(destDirPath, 'client.ts'), `${clientJs}
 }
 
-export default Client
+export default GatewayClient
 `);
