@@ -45,7 +45,8 @@ path.resolve(destDirPath).split(path.sep).reduce((before, cur) => {
 let indexJsExportAll = '';
 let clientJs = `
 import to from 'await-to-js'
-import { queries, mutations } from './index'
+import * as queries from './queries/queries'
+import * as mutations from './mutations/mutations'
 import {
   AxiosToResponse,
 } from '../../types'
@@ -211,7 +212,9 @@ const generateQuery = (
  * @param description description of the current object
  */
 const generateFile = (obj, description) => {
-  let indexJs = 'const fs = require(\'fs\');\nconst path = require(\'path\');\n\n';
+  let indexJs = '';
+  let indexJs2 = '';
+  // let operationsJs = '';
   let outputFolderName;
   switch (true) {
     case /Mutation$/.test(description):
@@ -232,14 +235,7 @@ const generateFile = (obj, description) => {
   } catch (err) {
     if (err.code !== 'EEXIST') throw err;
   }
-  Object.keys(obj).forEach((type) => {
-    const field = gqlSchema.getType(description).getFields()[type];
-    /* Only process non-deprecated queries/mutations: */
-    if (includeDeprecatedFields || !field.deprecationReason) {
-      const queryResult = generateQuery(type, description);
-      const varsToTypesStr = getVarsToTypesStr(queryResult.argumentsDict);
-      let query = queryResult.queryStr;
-      let queryName;
+  let queryName;
       switch (true) {
         case /Mutation/.test(description):
           queryName = 'mutation';
@@ -253,30 +249,44 @@ const generateFile = (obj, description) => {
         default:
           break;
       }
+  Object.keys(obj).forEach((type) => {
+    const field = gqlSchema.getType(description).getFields()[type];
+    /* Only process non-deprecated queries/mutations: */
+    if (includeDeprecatedFields || !field.deprecationReason) {
+      const queryResult = generateQuery(type, description);
+      const varsToTypesStr = getVarsToTypesStr(queryResult.argumentsDict);
+      let query = queryResult.queryStr;
       query = `${queryName || description.toLowerCase()} ${type}${varsToTypesStr ? `(${varsToTypesStr})` : ''}{\n${query}\n}`;
       const tsOperation = `${queryName.substring(0,1).toUpperCase()}${queryName.substring(1)}`
       const typeType = `${type.substring(0,1).toUpperCase()}${type.substring(1)}`
       const tsDataType = `${tsOperation}${typeType}Args`
       const hasArguments = obj[type].args.length > 0
-      fs.writeFileSync(path.join(writeFolder, `./${type}.ts`), `
+      const gqlName = `${type}Gql`
+      fs.mkdirSync(path.join(writeFolder, `./${type}`), {recursive: true});
+      fs.writeFileSync(path.join(writeFolder, `./${type}/index.ts`), `
 import { ${hasArguments ? `${tsDataType}, `: ''}${tsOperation} } from '../../graphql'
 import { Handlers } from '../../../types'
-export const ${type}Gql = \`
+export const ${gqlName} = \`
   ${query}
 \`
 export type ${typeType}Result = ${tsOperation}['${type}']
 export const ${type} = ({ handlers ${hasArguments ? `, data}: { data: ${tsDataType};` : `}: {`} handlers: Handlers<${typeType}Result>}) => {
   return {
-    query: ${type}Gql,
+    query: ${gqlName},
     name: ${type},
     handlers,
     ${hasArguments ? `data,` : ''}
   } as const
 }`);
-      indexJs += `export {${type}} from './${type}'\n`;
+      fs.writeFileSync(path.join(writeFolder, `./${type}/${type}.gql`),  `${query}`);
+      indexJs += `export * from './${type}'\n`;
+      indexJs2 += `export {${type}} from './${type}'\n`;
+      // operationsJs += `export {${gqlName}} from './${type}'\n`;
     }
   });
   fs.writeFileSync(path.join(writeFolder, 'index.ts'), indexJs);
+  fs.writeFileSync(path.join(writeFolder, `${outputFolderName}.ts`), indexJs2);
+  // fs.writeFileSync(path.join(writeFolder, `operations.ts`), operationsJs);
   indexJsExportAll += `export * as ${outputFolderName} from './${outputFolderName}'\n`;
 
   clientJs = `
