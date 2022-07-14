@@ -50,24 +50,37 @@ import * as mutations from './mutations/mutations'
 import {
   AxiosToResponse,
 } from '../../types'
+import { AxiosError, AxiosResponse } from 'axios'
 
 const axios = require('axios')
-const { AxiosError, AxiosResponse } = axios
-const methods = {...queries, ...mutations}
+const methods: { [key in keyof typeof queries]: typeof queries[key] } &
+  { [key in keyof typeof mutations]: typeof mutations[key] } = { ...queries, ...mutations }
 type MethodsRecord = typeof methods
 type Methods = MethodsRecord[keyof MethodsRecord]
 export type ReturnValues = Awaited<ReturnType<Parameters<Methods>[0]['handlers']['2']>>['data']
+export type Configs = ReturnType<Methods>
+
 class GatewayClient {
-  config: ReturnValues[] = []
-  private endpoints: {commerce: string}
-  constructor({endpoints}: {endpoints: {commerce: string}}) {
+  config: Configs[] = []
+  private endpoints: {commerceAdmin: string; entry: string}
+  constructor({endpoints}: {endpoints: {commerceAdmin: string; entry: string}}) {
     this.endpoints = endpoints
   }
   async fetch() {
-    const [err, res]: AxiosToResponse<ReturnValues> = await to(
+    const [err, res]: AxiosToResponse<AxiosResponse<ReturnValues>[]> = await to(
       axios({
-        url: \`${process.env.ENDPOINT}\`,
-        data: this.config,
+        url: \`\${this.endpoints.entry}/fanout\`,
+        data: {
+          requests: this.config.map(config => ({
+            data: {
+              variables: (config as any).data,
+              query: config.query
+            },
+            config: {
+              endpoint: this.endpoints.commerceAdmin,
+            }
+          }))
+        },
         method: 'POST',
         withCredentials: true
       })
@@ -266,9 +279,8 @@ const generateFile = (obj, description) => {
       fs.writeFileSync(path.join(writeFolder, `./${type}/index.ts`), `
 import { ${hasArguments ? `${tsDataType}, `: ''}${tsOperation} } from '../../../graphql'
 import { Handlers } from '../../../../types'
-export const ${gqlName} = \`
-  ${query}
-\`
+import ${gqlName} from '../../../operations2/${outputFolderName}/${type}'
+
 export type ${typeType}Result = ${tsOperation}['${type}']
 export const ${type} = ({ handlers ${hasArguments ? `, data}: { data: ${tsDataType};` : `}: {`} handlers: Handlers<${typeType}Result>}) => {
   return {
