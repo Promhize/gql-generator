@@ -59,11 +59,12 @@ type MethodsRecord = typeof methods
 type Methods = MethodsRecord[keyof MethodsRecord]
 export type ReturnValues = Awaited<ReturnType<Parameters<Methods>[0]['handlers']['2']>>['data']
 export type Configs = ReturnType<Methods>
+type Endpoints = { commerceAdmin: string; entry: string; workspaceToken: string }
 
 class GatewayClient {
   config: Configs[] = []
-  private endpoints: {commerceAdmin: string; entry: string}
-  constructor({endpoints}: {endpoints: {commerceAdmin: string; entry: string}}) {
+  private endpoints: Endpoints
+  constructor({endpoints}: {endpoints: Endpoints}) {
     this.endpoints = endpoints
   }
   async fetch() {
@@ -80,6 +81,9 @@ class GatewayClient {
               endpoint: this.endpoints.commerceAdmin,
             }
           }))
+        },
+        headers: {
+          Authorization: `Bearer ${this.endpoints.workspaceToken}`
         },
         method: 'POST',
         withCredentials: true
