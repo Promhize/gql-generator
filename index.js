@@ -52,7 +52,8 @@ import {
 } from '../../types'
 import { AxiosError, AxiosResponse } from 'axios'
 
-const axios = require('axios')
+import axios from 'axios'
+
 const methods: { [key in keyof typeof queries]: typeof queries[key] } &
   { [key in keyof typeof mutations]: typeof mutations[key] } = { ...queries, ...mutations }
 type MethodsRecord = typeof methods
@@ -83,7 +84,7 @@ class GatewayClient {
           }))
         },
         headers: {
-          Authorization: `Bearer ${this.endpoints.workspaceToken}`
+          Authorization: \`Bearer \${this.endpoints.workspaceToken}\`
         },
         method: 'POST',
         withCredentials: true
